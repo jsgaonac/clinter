@@ -6,6 +6,7 @@ package listeners;
 
 import antlr4.CBaseListener;
 import antlr4.CParser;
+import util.StringAnalysis;
 
 public class CodeStyleListener extends CBaseListener
 {
@@ -30,6 +31,7 @@ public class CodeStyleListener extends CBaseListener
         
         if (!id.equals(betterID))
         {
+            betterID = StringAnalysis.getStyledID(id);
             System.out.println(
                     "(" +
                     ctx.getStart().getLine() + ", " +

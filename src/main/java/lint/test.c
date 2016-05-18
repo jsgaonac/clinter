@@ -1,6 +1,6 @@
 main(void)
-{
-    int id_Esta_muyMal;
-    char Id;
-    String camelCase;
-}
+ {
+     int id_Esta_muyMal; int id_Esta_muyMal; int id_Esta_muyMal; int id_Esta_muyMal;
+     char Id;
+     String camelCase;
+ }

@@ -23,6 +23,7 @@ public class CodeStyleListener extends CBaseListener
     {
         this.parser = parser;
         funcSpecList = new ArrayList<>();
+        isInFunctionDecl = false;
     }
 
     @Override
@@ -80,14 +81,14 @@ public class CodeStyleListener extends CBaseListener
     @Override
     public void enterDirectDeclarator(CParser.DirectDeclaratorContext ctx)
     {
-        if (isInFunctionDecl)
+        if (ctx.Identifier() != null)
         {
-            if (ctx.Identifier() != null)
-            {
-                String id = ctx.Identifier().toString();
-                int idLine = ctx.Identifier().getSymbol().getLine();
-                int idCol = ctx.Identifier().getSymbol().getCharPositionInLine();
+            String id = ctx.Identifier().toString();
+            int idLine = ctx.Identifier().getSymbol().getLine();
+            int idCol = ctx.Identifier().getSymbol().getCharPositionInLine();
 
+            if (isInFunctionDecl)
+            {
                 if (!isInParameterDecl)
                 {
                     if (funcSpecList.size() > 0)
@@ -117,9 +118,9 @@ public class CodeStyleListener extends CBaseListener
                         }
                     }
                 }
-
-                checkIdentifier(id, idLine, idCol);
             }
+
+            checkIdentifier(id, idLine, idCol);
         }
     }
 
@@ -137,28 +138,45 @@ public class CodeStyleListener extends CBaseListener
     @Override
     public void enterCompoundStatement(CParser.CompoundStatementContext ctx)
     {
-        if (isInFunctionDecl)
+        isInFunctionDecl = false;
+
+        if (ctx.getStart().getCharPositionInLine() > 0)
         {
-            if (ctx.getStart().getCharPositionInLine() > 0)
-            {
-                System.out.println(
-                        StringUtilities.getPrintInfo(
-                                ctx.getStart().getLine(),
-                                ctx.getStart().getCharPositionInLine(),
-                                "El corchete debería estar en la columna 1"
-                        )
-                );
-            }
-            if (ctx.getStop().getCharPositionInLine() > 0)
-            {
-                System.out.println(
-                        StringUtilities.getPrintInfo(
-                                ctx.getStop().getLine(),
-                                ctx.getStop().getCharPositionInLine(),
-                                "El corchete debería estar en la columna 1"
-                        )
-                );
-            }
+            System.out.println(
+                    StringUtilities.getPrintInfo(
+                            ctx.getStart().getLine(),
+                            ctx.getStart().getCharPositionInLine(),
+                            "El corchete debería estar en la columna 1"
+                    )
+            );
+        }
+        if (ctx.getStop().getCharPositionInLine() > 0)
+        {
+            System.out.println(
+                    StringUtilities.getPrintInfo(
+                            ctx.getStop().getLine(),
+                            ctx.getStop().getCharPositionInLine(),
+                            "El corchete debería estar en la columna 1"
+                    )
+            );
+        }
+
+    }
+
+    @Override
+    public void enterStructOrUnionSpecifier(CParser.StructOrUnionSpecifierContext ctx)
+    {
+        String id = ctx.Identifier().toString();
+
+        if (!Character.isUpperCase(id.charAt(0)))
+        {
+            System.out.println(
+                    StringUtilities.getPrintInfo(
+                            ctx.Identifier().getSymbol().getLine(),
+                            ctx.Identifier().getSymbol().getCharPositionInLine(),
+                            "Identificador: " + id + " -> " + StringUtilities.getStyledStructID(id)
+                    )
+            );
         }
     }
 

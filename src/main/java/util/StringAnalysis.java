@@ -25,4 +25,10 @@ public class StringAnalysis
 
         return styledID.startsWith("_") ? styledID.substring(1) : styledID;
     }
+
+    public static String getPrintInfo(int line, int col, String msg)
+    {
+        col++;
+        return "(" + line + ", " + col + "): " + msg;
+    }
 }

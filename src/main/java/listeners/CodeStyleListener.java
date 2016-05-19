@@ -6,8 +6,7 @@ package listeners;
 
 import antlr4.CBaseListener;
 import antlr4.CParser;
-import org.antlr.v4.runtime.TokenStream;
-import util.StringAnalysis;
+import util.StringUtilities;
 
 import java.util.ArrayList;
 
@@ -99,7 +98,7 @@ public class CodeStyleListener extends CBaseListener
                             if (line != lastLine)
                             {
                                 System.out.println(
-                                        StringAnalysis.getPrintInfo(
+                                        StringUtilities.getPrintInfo(
                                                 line,
                                                 0,
                                                 "El tipo de retorno de la función debería estar en la misma línea"));
@@ -111,7 +110,7 @@ public class CodeStyleListener extends CBaseListener
                         if (idLine == lastLine)
                         {
                             System.out.println(
-                                    StringAnalysis.getPrintInfo(
+                                    StringUtilities.getPrintInfo(
                                             idLine,
                                             idCol,
                                             "El identificador (" + id + ") debería estar en la siguiente línea"));
@@ -135,14 +134,42 @@ public class CodeStyleListener extends CBaseListener
         checkIdentifier(id, line, col);
     }
 
+    @Override
+    public void enterCompoundStatement(CParser.CompoundStatementContext ctx)
+    {
+        if (isInFunctionDecl)
+        {
+            if (ctx.getStart().getCharPositionInLine() > 0)
+            {
+                System.out.println(
+                        StringUtilities.getPrintInfo(
+                                ctx.getStart().getLine(),
+                                ctx.getStart().getCharPositionInLine(),
+                                "El corchete debería estar en la columna 1"
+                        )
+                );
+            }
+            if (ctx.getStop().getCharPositionInLine() > 0)
+            {
+                System.out.println(
+                        StringUtilities.getPrintInfo(
+                                ctx.getStop().getLine(),
+                                ctx.getStop().getCharPositionInLine(),
+                                "El corchete debería estar en la columna 1"
+                        )
+                );
+            }
+        }
+    }
+
     private void checkIdentifier(String id, int line, int col)
     {
         String betterID = id.toLowerCase();
 
         if (!id.equals(betterID))
         {
-            betterID = StringAnalysis.getStyledID(id);
-            String msg = StringAnalysis.getPrintInfo(
+            betterID = StringUtilities.getStyledID(id);
+            String msg = StringUtilities.getPrintInfo(
                     line,
                     col,
                     " Identificador: " + id + " -> " + betterID

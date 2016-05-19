@@ -3,7 +3,7 @@ package util;
 /**
  * Created by JuanSebastian on 18/05/2016.
  */
-public class StringAnalysis
+public class StringUtilities
 {
     public static String getStyledID(String oldID)
     {

@@ -6,6 +6,9 @@ package listeners;
 
 import antlr4.CBaseListener;
 import antlr4.CParser;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import util.StringUtilities;
 
 import java.util.ArrayList;
@@ -142,23 +145,11 @@ public class CodeStyleListener extends CBaseListener
 
         if (ctx.getStart().getCharPositionInLine() > 0)
         {
-            System.out.println(
-                    StringUtilities.getPrintInfo(
-                            ctx.getStart().getLine(),
-                            ctx.getStart().getCharPositionInLine(),
-                            "El corchete debería estar en la columna 1"
-                    )
-            );
+            printMisplacedBraces(ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine());
         }
         if (ctx.getStop().getCharPositionInLine() > 0)
         {
-            System.out.println(
-                    StringUtilities.getPrintInfo(
-                            ctx.getStop().getLine(),
-                            ctx.getStop().getCharPositionInLine(),
-                            "El corchete debería estar en la columna 1"
-                    )
-            );
+            printMisplacedBraces(ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
         }
 
     }
@@ -170,13 +161,24 @@ public class CodeStyleListener extends CBaseListener
 
         if (!Character.isUpperCase(id.charAt(0)))
         {
-            System.out.println(
-                    StringUtilities.getPrintInfo(
-                            ctx.Identifier().getSymbol().getLine(),
-                            ctx.Identifier().getSymbol().getCharPositionInLine(),
-                            "Identificador: " + id + " -> " + StringUtilities.getStyledStructID(id)
-                    )
+            checkIdentifier(
+                    id,
+                    ctx.Identifier().getSymbol().getLine(),
+                    ctx.Identifier().getSymbol().getCharPositionInLine()
             );
+        }
+
+        Token leftBraceToken = ctx.getToken(CParser.LeftBrace, 0).getSymbol();
+        Token rightBraceToken = ctx.getToken(CParser.RightBrace, 0).getSymbol();
+
+        if (leftBraceToken.getCharPositionInLine() > 0)
+        {
+            printMisplacedBraces(leftBraceToken.getLine(), leftBraceToken.getCharPositionInLine());
+        }
+
+        if (rightBraceToken.getCharPositionInLine() > 0)
+        {
+            printMisplacedBraces(rightBraceToken.getLine(), rightBraceToken.getCharPositionInLine());
         }
     }
 
@@ -195,6 +197,18 @@ public class CodeStyleListener extends CBaseListener
 
             System.out.println(msg);
         }
+    }
+
+    private void printMisplacedBraces(int line, int col)
+    {
+        System.out.println(
+                StringUtilities.getPrintInfo(
+                        line,
+                        col,
+                        "El corchete debería estar en la columna 1"
+                )
+        );
+
     }
 
 }

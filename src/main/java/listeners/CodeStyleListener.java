@@ -7,8 +7,6 @@ package listeners;
 import antlr4.CBaseListener;
 import antlr4.CParser;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import util.StringUtilities;
 
 import java.util.ArrayList;
@@ -158,18 +156,23 @@ public class CodeStyleListener extends CBaseListener
     public void enterStructOrUnionSpecifier(CParser.StructOrUnionSpecifierContext ctx)
     {
         String id = ctx.Identifier().toString();
+        String betterID = StringUtilities.getStyledStructID(id);
 
-        if (!Character.isUpperCase(id.charAt(0)))
+        if (!betterID.equals(id))
         {
-            checkIdentifier(
-                    id,
+            String msg = StringUtilities.getPrintInfo(
                     ctx.Identifier().getSymbol().getLine(),
-                    ctx.Identifier().getSymbol().getCharPositionInLine()
+                    ctx.Identifier().getSymbol().getCharPositionInLine(),
+                    "Identificador: " + id + " -> " + betterID
             );
+
+            System.out.println(msg);
         }
 
         Token leftBraceToken = ctx.getToken(CParser.LeftBrace, 0).getSymbol();
         Token rightBraceToken = ctx.getToken(CParser.RightBrace, 0).getSymbol();
+
+        if (leftBraceToken.getLine() == rightBraceToken.getLine()) return;
 
         if (leftBraceToken.getCharPositionInLine() > 0)
         {

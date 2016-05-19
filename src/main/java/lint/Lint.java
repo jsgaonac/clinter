@@ -57,7 +57,7 @@ public class Lint
             {
                 if (line.length() > MAX_LINE_LENGTH)
                 {
-                    System.out.println("Linea " + lineNumber.toString() + ": muy larga. MAX: " + MAX_LINE_LENGTH);
+                    System.out.println("Línea " + lineNumber.toString() + ": muy larga. MAX: " + MAX_LINE_LENGTH);
                 }
 
                 lineNumber++;

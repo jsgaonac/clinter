@@ -18,6 +18,8 @@ public class CodeStyleListener extends CBaseListener
     private boolean isInFunctionDecl;
     private boolean isInParameterDecl;
 
+    private int depth;
+
     private ArrayList<Integer> funcSpecList;
 
     public CodeStyleListener(CParser parser)
@@ -25,6 +27,7 @@ public class CodeStyleListener extends CBaseListener
         this.parser = parser;
         funcSpecList = new ArrayList<>();
         isInFunctionDecl = false;
+        depth = -4;
     }
 
     @Override
@@ -139,17 +142,34 @@ public class CodeStyleListener extends CBaseListener
     @Override
     public void enterCompoundStatement(CParser.CompoundStatementContext ctx)
     {
+        // No longer declaring the function, i.e. return type and name
         isInFunctionDecl = false;
 
-        if (ctx.getStart().getCharPositionInLine() > 0)
+        // The braces should be 4 spaces deeper
+        depth += 4;
+
+        int leftBraceLine = ctx.getToken(CParser.LeftBrace, 0).getSymbol().getLine();
+        int leftBraceCol = ctx.getToken(CParser.LeftBrace, 0).getSymbol().getCharPositionInLine();
+
+        if (leftBraceCol != depth)
         {
-            printMisplacedBraces(ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine());
+            printMisplacedBraces(leftBraceLine, leftBraceCol, depth);
         }
-        if (ctx.getStop().getCharPositionInLine() > 0)
+    }
+
+
+    @Override
+    public void exitCompoundStatement(CParser.CompoundStatementContext ctx)
+    {
+        int rightBraceLine = ctx.getToken(CParser.RightBrace, 0).getSymbol().getLine();
+        int rightBraceCol = ctx.getToken(CParser.RightBrace, 0).getSymbol().getCharPositionInLine();
+
+        if (rightBraceCol != depth)
         {
-            printMisplacedBraces(ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
+            printMisplacedBraces(rightBraceLine, rightBraceCol, depth);
         }
 
+        depth -= 4;
     }
 
     @Override
@@ -174,14 +194,14 @@ public class CodeStyleListener extends CBaseListener
 
         if (leftBraceToken.getLine() == rightBraceToken.getLine()) return;
 
-        if (leftBraceToken.getCharPositionInLine() > 0)
+        if (leftBraceToken.getCharPositionInLine() != 0)
         {
-            printMisplacedBraces(leftBraceToken.getLine(), leftBraceToken.getCharPositionInLine());
+            printMisplacedBraces(leftBraceToken.getLine(), leftBraceToken.getCharPositionInLine(), 0);
         }
 
-        if (rightBraceToken.getCharPositionInLine() > 0)
+        if (rightBraceToken.getCharPositionInLine() != 0)
         {
-            printMisplacedBraces(rightBraceToken.getLine(), rightBraceToken.getCharPositionInLine());
+            printMisplacedBraces(rightBraceToken.getLine(), rightBraceToken.getCharPositionInLine(), 0);
         }
     }
 
@@ -202,13 +222,13 @@ public class CodeStyleListener extends CBaseListener
         }
     }
 
-    private void printMisplacedBraces(int line, int col)
+    private void printMisplacedBraces(int line, int col, int correctCol)
     {
         System.out.println(
                 StringUtilities.getPrintInfo(
                         line,
                         col,
-                        "El corchete debería estar en la columna 1"
+                        "El corchete debería estar en la columna " + (++correctCol)
                 )
         );
 

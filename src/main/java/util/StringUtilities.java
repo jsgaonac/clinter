@@ -57,7 +57,7 @@ public class StringUtilities
 
     public static String getPrintInfo(int line, int col, String msg)
     {
-        col++;
+        col += 1;
         return "(" + line + ", " + col + "): " + msg;
     }
 }

@@ -7,6 +7,7 @@ package listeners;
 import antlr4.CBaseListener;
 import antlr4.CParser;
 import org.antlr.v4.runtime.Token;
+import util.IDInfo;
 import util.StringUtilities;
 
 import java.util.ArrayList;
@@ -17,16 +18,25 @@ public class CodeStyleListener extends CBaseListener
 
     private boolean isInFunctionDecl;
     private boolean isInParameterDecl;
+    private boolean isInVarDeclList;
+    private boolean isInDecl;
 
     private int depth;
 
-    private ArrayList<Integer> funcSpecList;
+    private ArrayList<IDInfo> funcSpecList;
+    private ArrayList<IDInfo> varDeclList;
 
     public CodeStyleListener(CParser parser)
     {
         this.parser = parser;
         funcSpecList = new ArrayList<>();
+        varDeclList = new ArrayList<>();
+
         isInFunctionDecl = false;
+        isInParameterDecl = false;
+        isInVarDeclList = false;
+        isInDecl = false;
+
         depth = -4;
     }
 
@@ -58,18 +68,26 @@ public class CodeStyleListener extends CBaseListener
     @Override
     public void enterTypeQualifier(CParser.TypeQualifierContext ctx)
     {
+        IDInfo idInfo = getTokenInfo(ctx.getStart());
+
         if (isInFunctionDecl)
         {
-            funcSpecList.add(ctx.getStart().getLine());
+            funcSpecList.add(idInfo);
         }
     }
 
     @Override
     public void enterTypeSpecifier(CParser.TypeSpecifierContext ctx)
     {
+        IDInfo idInfo = getTokenInfo(ctx.getStart());
+
         if (isInFunctionDecl)
         {
-            funcSpecList.add(ctx.getStart().getLine());
+            funcSpecList.add(idInfo);
+        }
+        else if (isInDecl)
+        {
+            varDeclList.add(idInfo);
         }
     }
 
@@ -78,7 +96,7 @@ public class CodeStyleListener extends CBaseListener
     {
         if (isInFunctionDecl)
         {
-            funcSpecList.add(ctx.getStart().getLine());
+            funcSpecList.add(getTokenInfo(ctx.getStart()));
         }
     }
 
@@ -87,56 +105,31 @@ public class CodeStyleListener extends CBaseListener
     {
         if (ctx.Identifier() != null)
         {
-            String id = ctx.Identifier().toString();
-            int idLine = ctx.Identifier().getSymbol().getLine();
-            int idCol = ctx.Identifier().getSymbol().getCharPositionInLine();
+            IDInfo idInfo = getTokenInfo(ctx.Identifier().getSymbol());
 
             if (isInFunctionDecl)
             {
-                if (!isInParameterDecl)
-                {
-                    if (funcSpecList.size() > 0)
-                    {
-                        int lastLine = funcSpecList.get(0);
-                        for (int line : funcSpecList)
-                        {
-                            if (line != lastLine)
-                            {
-                                System.out.println(
-                                        StringUtilities.getPrintInfo(
-                                                line,
-                                                0,
-                                                "El tipo de retorno de la función debería estar en la misma línea"));
-                            }
-
-                            lastLine = line;
-                        }
-
-                        if (idLine == lastLine)
-                        {
-                            System.out.println(
-                                    StringUtilities.getPrintInfo(
-                                            idLine,
-                                            idCol,
-                                            "El identificador (" + id + ") debería estar en la siguiente línea"));
-                        }
-                    }
-                }
+                handleFunctionDecl(idInfo);
             }
 
-            checkIdentifier(id, idLine, idCol);
+            if (isInVarDeclList)
+            {
+                handleDeclList(idInfo);
+            }
+
+            checkIdentifier(idInfo);
         }
     }
 
     @Override
     public void enterTypedefName(CParser.TypedefNameContext ctx)
     {
-        String id = ctx.Identifier().toString();
+        IDInfo idInfo = new IDInfo();
+        idInfo.id = ctx.Identifier().toString();
+        idInfo.line = ctx.Identifier().getSymbol().getLine();
+        idInfo.col = ctx.Identifier().getSymbol().getCharPositionInLine();
 
-        int line = ctx.Identifier().getSymbol().getLine();
-        int col = ctx.Identifier().getSymbol().getCharPositionInLine();
-
-        checkIdentifier(id, line, col);
+        checkIdentifier(idInfo);
     }
 
     @Override
@@ -156,7 +149,6 @@ public class CodeStyleListener extends CBaseListener
             printMisplacedBraces(leftBraceLine, leftBraceCol, depth);
         }
     }
-
 
     @Override
     public void exitCompoundStatement(CParser.CompoundStatementContext ctx)
@@ -205,17 +197,60 @@ public class CodeStyleListener extends CBaseListener
         }
     }
 
-    private void checkIdentifier(String id, int line, int col)
+    @Override
+    public void enterDeclaration(CParser.DeclarationContext ctx)
     {
-        String betterID = id.toLowerCase();
+        isInDecl = true;
 
-        if (!id.equals(betterID))
+        varDeclList.clear();
+    }
+
+    @Override
+    public void exitDeclaration(CParser.DeclarationContext ctx)
+    {
+        isInDecl = false;
+
+        if (isInVarDeclList)
         {
-            betterID = StringUtilities.getStyledID(id);
+            int lastLine = varDeclList.get(0).line;
+
+            for (int i = 1; i < varDeclList.size(); i++)
+            {
+                IDInfo idInfo = varDeclList.get(i);
+                if (idInfo.line != lastLine)
+                {
+                    String msg = StringUtilities.getPrintInfo(
+                            idInfo.line,
+                            idInfo.col,
+                            "El identificador " + idInfo.id + " debería estar en la línea " + varDeclList.get(0).line
+                    );
+
+                    System.out.println(msg);
+                }
+            }
+
+            isInVarDeclList = false;
+            varDeclList.clear();
+        }
+    }
+
+    @Override
+    public void enterInitDeclaratorList(CParser.InitDeclaratorListContext ctx)
+    {
+        isInVarDeclList = true;
+    }
+
+    private void checkIdentifier(IDInfo idInfo)
+    {
+        String betterID = idInfo.id.toLowerCase();
+
+        if (!idInfo.id.equals(betterID))
+        {
+            betterID = StringUtilities.getStyledID(idInfo.id);
             String msg = StringUtilities.getPrintInfo(
-                    line,
-                    col,
-                    " Identificador: " + id + " -> " + betterID
+                    idInfo.line,
+                    idInfo.col,
+                    " Identificador: " + idInfo.id + " -> " + betterID
             );
 
             System.out.println(msg);
@@ -234,4 +269,52 @@ public class CodeStyleListener extends CBaseListener
 
     }
 
+    private void handleFunctionDecl(IDInfo idInfo)
+    {
+        if (!isInParameterDecl)
+        {
+            if (funcSpecList.size() > 0)
+            {
+                int lastLine = funcSpecList.get(0).line;
+                for (int i = 1; i < funcSpecList.size(); i++)
+                {
+                    int line = funcSpecList.get(i).line;
+                    if (line != lastLine)
+                    {
+                        System.out.println(
+                                StringUtilities.getPrintInfo(
+                                        line,
+                                        funcSpecList.get(i).col,
+                                        "El tipo de retorno de la función debería estar en la misma línea"));
+                    }
+
+                    lastLine = line;
+                }
+
+                if (idInfo.line == lastLine)
+                {
+                    System.out.println(
+                            StringUtilities.getPrintInfo(
+                                    idInfo.line,
+                                    idInfo.col,
+                                    "El identificador (" + idInfo.id + ") debería estar en la siguiente línea"));
+                }
+            }
+        }
+    }
+
+    private void handleDeclList(IDInfo idInfo)
+    {
+        varDeclList.add(idInfo);
+    }
+
+    private IDInfo getTokenInfo(Token token)
+    {
+        IDInfo idInfo = new IDInfo();
+        idInfo.id = token.getText();
+        idInfo.line = token.getLine();
+        idInfo.col = token.getCharPositionInLine();
+
+        return idInfo;
+    }
 }

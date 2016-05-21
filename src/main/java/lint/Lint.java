@@ -15,6 +15,7 @@ import java.io.*;
  */
 public class Lint
 {
+    private CodeStyleListener codeStyleListener;
     public static void main(String[] args)
     {
         if (args.length < 1)
@@ -34,11 +35,17 @@ public class Lint
         {
             doCheckLineLength(filename);
             doParsing(filename);
+            doCheckMemLeaks();
         }
         catch (Exception e)
         {
             e.printStackTrace();
         }
+    }
+
+    private void doCheckMemLeaks()
+    {
+        codeStyleListener.checkMemoryLeaks();
     }
 
     private void doCheckLineLength(String filename)
@@ -96,7 +103,7 @@ public class Lint
         ParseTree tree = parser.compilationUnit();
         ParseTreeWalker walker = new ParseTreeWalker();
 
-        CodeStyleListener codeStyleListener = new CodeStyleListener(parser);
+        codeStyleListener = new CodeStyleListener(parser);
         walker.walk(codeStyleListener, tree);
     }
 }

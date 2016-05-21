@@ -6,7 +6,9 @@ package listeners;
 
 import antlr4.CBaseListener;
 import antlr4.CParser;
+import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.TokenStream;
 import util.IDInfo;
 import util.StringUtilities;
 
@@ -20,22 +22,28 @@ public class CodeStyleListener extends CBaseListener
     private boolean isInParameterDecl;
     private boolean isInVarDeclList;
     private boolean isInDecl;
+    private boolean isInAsignExpr;
 
     private int depth;
 
     private ArrayList<IDInfo> funcSpecList;
     private ArrayList<IDInfo> varDeclList;
+    private ArrayList<IDInfo> varMallocList;
+    private ArrayList<IDInfo> varFreeList;
 
     public CodeStyleListener(CParser parser)
     {
         this.parser = parser;
         funcSpecList = new ArrayList<>();
         varDeclList = new ArrayList<>();
+        varMallocList = new ArrayList<>();
+        varFreeList = new ArrayList<>();
 
         isInFunctionDecl = false;
         isInParameterDecl = false;
         isInVarDeclList = false;
         isInDecl = false;
+        isInAsignExpr = false;
 
         depth = -4;
     }
@@ -202,6 +210,32 @@ public class CodeStyleListener extends CBaseListener
     {
         isInDecl = true;
 
+        if (ctx.getText().contains("free("))
+        {
+            CParser.DirectDeclaratorContext declCtx = ctx.initDeclaratorList()
+                    .initDeclarator()
+                    .declarator()
+                    .directDeclarator()
+                    .declarator()
+                    .directDeclarator();
+
+            IDInfo varInfo = getTokenInfo(declCtx.Identifier().getSymbol());
+
+            varFreeList.add(varInfo);
+        }
+        else if (ctx.getText().contains("malloc("))
+        {
+            CParser.DirectDeclaratorContext declCtx = ctx
+                    .initDeclaratorList()
+                    .initDeclarator()
+                    .declarator()
+                    .directDeclarator();
+
+            IDInfo varInfo = getTokenInfo(declCtx.Identifier().getSymbol());
+
+            varMallocList.add(varInfo);
+        }
+
         varDeclList.clear();
     }
 
@@ -238,6 +272,26 @@ public class CodeStyleListener extends CBaseListener
     public void enterInitDeclaratorList(CParser.InitDeclaratorListContext ctx)
     {
         isInVarDeclList = true;
+    }
+
+    @Override
+    public void enterAssignmentExpression(CParser.AssignmentExpressionContext ctx)
+    {
+        isInAsignExpr = true;
+    }
+
+    @Override
+    public void exitExpression(CParser.ExpressionContext ctx)
+    {
+        if (isInAsignExpr)
+        {
+            if (ctx.getText().contains("malloc"))
+            {
+                varMallocList.add(getTokenInfo(ctx.getStart()));
+            }
+
+            isInAsignExpr = false;
+        }
     }
 
     private void checkIdentifier(IDInfo idInfo)
@@ -316,5 +370,43 @@ public class CodeStyleListener extends CBaseListener
         idInfo.col = token.getCharPositionInLine();
 
         return idInfo;
+    }
+
+    public void checkMemoryLeaks()
+    {
+        ArrayList<IDInfo> removable = new ArrayList<>();
+
+        for (int j = 0; j < varMallocList.size(); j++)
+        {
+            String mallocId = varMallocList.get(j).id;
+
+            for (int i = 0; i < varFreeList.size(); i++)
+            {
+                String freeId = varFreeList.get(i).id;
+
+                if (mallocId.equals(freeId))
+                {
+                    removable.add(varMallocList.get(j));
+                    varFreeList.remove(i);
+                    break;
+                }
+            }
+        }
+
+        for (IDInfo k : removable)
+        {
+            varMallocList.remove(k);
+        }
+
+        for (IDInfo var : varMallocList)
+        {
+            String msg = StringUtilities.getPrintInfo(
+                    var.line,
+                    var.col,
+                    "La variable '" + var.id + "' no se liberó con free (Posible memory leak)"
+            );
+
+            System.out.println(msg);
+        }
     }
 }

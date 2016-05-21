@@ -294,6 +294,23 @@ public class CodeStyleListener extends CBaseListener
         }
     }
 
+    @Override
+    public void exitJumpStatement(CParser.JumpStatementContext ctx)
+    {
+        Token token = ctx.getToken(CParser.Goto, 0).getSymbol();
+
+        if (token.getText().equals("goto"))
+        {
+            String msg = StringUtilities.getPrintInfo(
+                    token.getLine(),
+                    token.getCharPositionInLine(),
+                    "Use goto con precaución"
+            );
+
+            System.out.println(msg);
+        }
+    }
+
     private void checkIdentifier(IDInfo idInfo)
     {
         String betterID = idInfo.id.toLowerCase();

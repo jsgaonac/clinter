@@ -399,13 +399,16 @@ public class CodeStyleListener extends CBaseListener
 
             for (int i = 0; i < varFreeList.size(); i++)
             {
-                String freeId = varFreeList.get(i).id;
+                IDInfo freeId = varFreeList.get(i);
 
-                if (mallocId.equals(freeId))
+                if (mallocId.equals(freeId.id))
                 {
-                    removable.add(varMallocList.get(j));
-                    varFreeList.remove(i);
-                    break;
+                    if (freeId.line > varMallocList.get(j).line)
+                    {
+                        removable.add(varMallocList.get(j));
+                        varFreeList.remove(i);
+                        break;
+                    }
                 }
             }
         }

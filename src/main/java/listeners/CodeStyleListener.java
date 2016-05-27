@@ -9,6 +9,7 @@ import antlr4.CParser;
 import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenStream;
+import ui.UI;
 import util.IDInfo;
 import util.StringUtilities;
 
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 public class CodeStyleListener extends CBaseListener
 {
     private CParser parser;
+    private UI ui;
 
     private boolean isInFunctionDecl;
     private boolean isInParameterDecl;
@@ -31,9 +33,11 @@ public class CodeStyleListener extends CBaseListener
     private ArrayList<IDInfo> varMallocList;
     private ArrayList<IDInfo> varFreeList;
 
-    public CodeStyleListener(CParser parser)
+    public CodeStyleListener(CParser parser, UI ui)
     {
         this.parser = parser;
+        this.ui = ui;
+
         funcSpecList = new ArrayList<>();
         varDeclList = new ArrayList<>();
         varMallocList = new ArrayList<>();
@@ -186,7 +190,7 @@ public class CodeStyleListener extends CBaseListener
                     "Identificador: " + id + " -> " + betterID
             );
 
-            System.out.println(msg);
+            ui.displayText(msg);
         }
 
         Token leftBraceToken = ctx.getToken(CParser.LeftBrace, 0).getSymbol();
@@ -259,7 +263,7 @@ public class CodeStyleListener extends CBaseListener
                             "El identificador " + idInfo.id + " debería estar en la línea " + varDeclList.get(0).line
                     );
 
-                    System.out.println(msg);
+                    ui.displayText(msg);
                 }
             }
 
@@ -307,7 +311,7 @@ public class CodeStyleListener extends CBaseListener
                     "Use goto con precaución"
             );
 
-            System.out.println(msg);
+            ui.displayText(msg);
         }
     }
 
@@ -324,13 +328,13 @@ public class CodeStyleListener extends CBaseListener
                     " Identificador: " + idInfo.id + " -> " + betterID
             );
 
-            System.out.println(msg);
+            ui.displayText(msg);
         }
     }
 
     private void printMisplacedBraces(int line, int col, int correctCol)
     {
-        System.out.println(
+        ui.displayText(
                 StringUtilities.getPrintInfo(
                         line,
                         col,
@@ -352,7 +356,7 @@ public class CodeStyleListener extends CBaseListener
                     int line = funcSpecList.get(i).line;
                     if (line != lastLine)
                     {
-                        System.out.println(
+                        ui.displayText(
                                 StringUtilities.getPrintInfo(
                                         line,
                                         funcSpecList.get(i).col,
@@ -364,7 +368,7 @@ public class CodeStyleListener extends CBaseListener
 
                 if (idInfo.line == lastLine)
                 {
-                    System.out.println(
+                    ui.displayText(
                             StringUtilities.getPrintInfo(
                                     idInfo.line,
                                     idInfo.col,
@@ -399,13 +403,16 @@ public class CodeStyleListener extends CBaseListener
 
             for (int i = 0; i < varFreeList.size(); i++)
             {
-                String freeId = varFreeList.get(i).id;
+                IDInfo freeId = varFreeList.get(i);
 
-                if (mallocId.equals(freeId))
+                if (mallocId.equals(freeId.id))
                 {
-                    removable.add(varMallocList.get(j));
-                    varFreeList.remove(i);
-                    break;
+                    if (freeId.line > varMallocList.get(j).line)
+                    {
+                        removable.add(varMallocList.get(j));
+                        varFreeList.remove(i);
+                        break;
+                    }
                 }
             }
         }
@@ -423,7 +430,7 @@ public class CodeStyleListener extends CBaseListener
                     "La variable '" + var.id + "' no se liberó con free (Posible memory leak)"
             );
 
-            System.out.println(msg);
+            ui.displayText(msg);
         }
     }
 }

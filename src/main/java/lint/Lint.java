@@ -7,6 +7,10 @@ import antlr4.CParser;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import ui.ConsoleUI;
+import ui.GUI;
+import ui.UI;
+import util.Constants;
 
 import java.io.*;
 
@@ -15,21 +19,26 @@ import java.io.*;
  */
 public class Lint
 {
-    private CodeStyleListener codeStyleListener;
     public static void main(String[] args)
     {
-        if (args.length < 1)
-        {
-            System.out.println("Debe proporcionar un archivo para ser analizado.");
-        }
-
-        String filename = args[0];
-
         Lint linter = new Lint();
-        linter.run(filename);
+
+        if (args.length == 1)
+        {
+            if (args[0].equals("--gui")) linter.setUI(Constants.UI.GUI);
+            else
+            {
+                linter.setUI(Constants.UI.CONSOLE);
+                linter.run(args[0]);
+            }
+        }
+        else
+        {
+            System.out.println("Argumentos: [ruta_a_archivo_a_ser_analizado | --gui]");
+        }
     }
 
-    private void run(String filename)
+    public void run(String filename)
     {
         try
         {
@@ -37,9 +46,24 @@ public class Lint
             doParsing(filename);
             doCheckMemLeaks();
         }
+        catch (FileNotFoundException e)
+        {
+           ui.displayText("Archivo: " + filename + " no encontrado.");
+        }
         catch (Exception e)
         {
             e.printStackTrace();
+        }
+    }
+
+    private void setUI(Constants.UI uiType)
+    {
+        switch (uiType)
+        {
+            case GUI: ui = new GUI(this); break;
+            case CONSOLE: ui = new ConsoleUI(); break;
+
+            default: break;
         }
     }
 
@@ -70,10 +94,6 @@ public class Lint
                 lineNumber++;
             }
         }
-        catch (FileNotFoundException e)
-        {
-            System.out.println("Archivo: " + filename + " no encontrado.");
-        }
         catch (IOException e)
         {
             e.printStackTrace();
@@ -103,7 +123,11 @@ public class Lint
         ParseTree tree = parser.compilationUnit();
         ParseTreeWalker walker = new ParseTreeWalker();
 
-        codeStyleListener = new CodeStyleListener(parser);
+        codeStyleListener = new CodeStyleListener(parser, ui);
         walker.walk(codeStyleListener, tree);
     }
+
+    private CodeStyleListener codeStyleListener;
+    private UI ui;
+
 }
